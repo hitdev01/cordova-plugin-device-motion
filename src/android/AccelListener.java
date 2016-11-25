@@ -48,14 +48,24 @@ public class AccelListener extends CordovaPlugin implements SensorEventListener 
     public static int STARTING = 1;
     public static int RUNNING = 2;
     public static int ERROR_FAILED_TO_START = 3;
+    private static final double RAD2DEG = 180/Math.PI;
+    private static final int MATRIX_SIZE = 16;
 
     private float x,y,z;                                // most recent acceleration values
+    private int pitch;
+    private int roll;
+    private int azimuth;
+    private float[] gravity = new float[3];
+    private float[] geomagnetic = new float[3];
+    private float[] gyroscope = new float[3];
     private long timestamp;                         // time of most recent value
     private int status;                                 // status of listener
     private int accuracy = SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM;
 
     private SensorManager sensorManager;    // Sensor manager
-    private Sensor mSensor;                           // Acceleration sensor returned by sensor manager
+    private Sensor mAccSensor;                           // Acceleration sensor returned by sensor manager
+    private Sensor mMagSensor;                           // Magnetic sensor returned by sensor manager
+    private Sensor mGyrSensor;                           // Gyroscepe sensor returned by sensor manager
 
     private CallbackContext callbackContext;              // Keeps track of the JS callback context.
 
@@ -73,6 +83,9 @@ public class AccelListener extends CordovaPlugin implements SensorEventListener 
         this.x = 0;
         this.y = 0;
         this.z = 0;
+        this.pitch = 0;
+        this.roll = 0;
+        this.azimuth = 0;
         this.timestamp = 0;
         this.setStatus(AccelListener.STOPPED);
      }
@@ -149,12 +162,15 @@ public class AccelListener extends CordovaPlugin implements SensorEventListener 
         this.setStatus(AccelListener.STARTING);
 
         // Get accelerometer from sensor manager
-        List<Sensor> list = this.sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
+        List<Sensor> acclist = this.sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
+        List<Sensor> maglist = this.sensorManager.getSensorList(Sensor.TYPE_MAGNETIC_FIELD);
+        List<Sensor> gyrlist = this.sensorManager.getSensorList(Sensor.TYPE_GYROSCOPE);
 
         // If found, then register as listener
-        if ((list != null) && (list.size() > 0)) {
-          this.mSensor = list.get(0);
-          if (this.sensorManager.registerListener(this, this.mSensor, SensorManager.SENSOR_DELAY_UI)) {
+        if ((acclist != null) && (acclist.size() > 0) && (maglist != null)) {
+          this.mAccSensor = acclist.get(0);
+          if (this.sensorManager.registerListener(this, this.mAccSensor, SensorManager.SENSOR_DELAY_GAME)
+            ) {
               this.setStatus(AccelListener.STARTING);
               // CB-11531: Mark accuracy as 'reliable' - this is complementary to
               // setting it to 'unreliable' 'stop' method
@@ -169,6 +185,42 @@ public class AccelListener extends CordovaPlugin implements SensorEventListener 
           this.setStatus(AccelListener.ERROR_FAILED_TO_START);
           this.fail(AccelListener.ERROR_FAILED_TO_START, "No sensors found to register accelerometer listening to.");
           return this.status;
+        }
+        if ((maglist != null) && (maglist.size() > 0)) {
+          this.mMagSensor = maglist.get(0);
+          if (this.sensorManager.registerListener(this, this.mMagSensor, SensorManager.SENSOR_DELAY_GAME)) {
+              this.setStatus(AccelListener.STARTING);
+              // CB-11531: Mark accuracy as 'reliable' - this is complementary to
+              // setting it to 'unreliable' 'stop' method
+              this.accuracy = SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM;
+          } else {
+              this.setStatus(AccelListener.ERROR_FAILED_TO_START);
+              this.fail(AccelListener.ERROR_FAILED_TO_START, "Device sensor returned an error.");
+              return this.status;
+          };
+
+        } else {
+          this.setStatus(AccelListener.ERROR_FAILED_TO_START);
+          this.fail(AccelListener.ERROR_FAILED_TO_START, "No sensors found to register Magnetic field listening to.");
+          return this.status;
+        }
+        if ((gyrlist != null) && (gyrlist.size() > 0)) {
+          this.mGyrSensor = gyrlist.get(0);
+          if (this.sensorManager.registerListener(this, this.mGyrSensor, SensorManager.SENSOR_DELAY_GAME)) {
+              this.setStatus(AccelListener.STARTING);
+              // CB-11531: Mark accuracy as 'reliable' - this is complementary to
+              // setting it to 'unreliable' 'stop' method
+              this.accuracy = SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM;
+          } else {
+              this.setStatus(AccelListener.ERROR_FAILED_TO_START);
+              this.fail(AccelListener.ERROR_FAILED_TO_START, "Device sensor returned an error.");
+              return this.status;
+          };
+
+        } else {
+          // this.setStatus(AccelListener.ERROR_FAILED_TO_START);
+          // this.fail(AccelListener.ERROR_FAILED_TO_START, "No sensors found to register gyroscope listening to.");
+          // return this.status;
         }
 
         startTimeout();
@@ -221,7 +273,8 @@ public class AccelListener extends CordovaPlugin implements SensorEventListener 
      */
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         // Only look at accelerometer events
-        if (sensor.getType() != Sensor.TYPE_ACCELEROMETER) {
+        if (sensor.getType() != Sensor.TYPE_ACCELEROMETER
+         && sensor.getType() != Sensor.TYPE_MAGNETIC_FIELD) {
             return;
         }
 
@@ -238,24 +291,50 @@ public class AccelListener extends CordovaPlugin implements SensorEventListener 
      * @param SensorEvent event
      */
     public void onSensorChanged(SensorEvent event) {
-        // Only look at accelerometer events
-        if (event.sensor.getType() != Sensor.TYPE_ACCELEROMETER) {
-            return;
-        }
-
         // If not running, then just return
         if (this.status == AccelListener.STOPPED) {
             return;
         }
         this.setStatus(AccelListener.RUNNING);
 
-        if (this.accuracy >= SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM) {
+        switch(event.sensor.getType()) {
+            case Sensor.TYPE_MAGNETIC_FIELD:
+                this.geomagnetic = event.values.clone();
+                break;
+            case Sensor.TYPE_ACCELEROMETER:
+                this.gravity = event.values.clone();
+                break;
+            case Sensor.TYPE_GYROSCOPE:
+                this.gyroscope = event.values.clone();
+                break;
+            default:
+                return;
+        }
 
-            // Save time that event was received
+        if (this.gravity != null && this.geomagnetic != null) {
+            /* rotationMatrix */
+            float[] rotationMatrix = new float[MATRIX_SIZE];
+            float[] remapedMatrix = new float[MATRIX_SIZE];
+            float[] inclinationMatrix = new float[MATRIX_SIZE];
+            float[] orientationValues = new float[3];
+
+            SensorManager.getRotationMatrix(rotationMatrix, inclinationMatrix, this.gravity, this.geomagnetic);
+            SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_X, SensorManager.AXIS_Y, remapedMatrix);
+            SensorManager.getOrientation(remapedMatrix, orientationValues);
+            int angle = (int) Math.floor(Math.toDegrees(orientationValues[0]));
+            if(angle >= 0) {
+                this.azimuth = angle;
+            } else if(angle < 0) {
+                this.azimuth = 360 + angle;
+            }
+            this.pitch = (int) Math.floor(Math.toDegrees(orientationValues[1])); // x
+            this.roll = (int) Math.floor(Math.toDegrees(orientationValues[2]));  // y
+
+            // original
+            this.x = this.gravity[0];
+            this.y = this.gravity[1];
+            this.z = this.gravity[2];
             this.timestamp = System.currentTimeMillis();
-            this.x = event.values[0];
-            this.y = event.values[1];
-            this.z = event.values[2];
 
             this.win();
         }
@@ -302,6 +381,9 @@ public class AccelListener extends CordovaPlugin implements SensorEventListener 
             r.put("x", this.x);
             r.put("y", this.y);
             r.put("z", this.z);
+            r.put("pitch", this.pitch);
+            r.put("roll", this.roll);
+            r.put("azimuth", this.azimuth);
             r.put("timestamp", this.timestamp);
         } catch (JSONException e) {
             e.printStackTrace();
