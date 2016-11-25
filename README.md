@@ -21,16 +21,12 @@ description: Access accelerometer data.
 #         under the License.
 -->
 
-|Android|iOS| Windows 8.1 Store | Windows 8.1 Phone | Windows 10 Store | Travis CI |
-|:-:|:-:|:-:|:-:|:-:|:-:|
-|[![Build Status](http://cordova-ci.cloudapp.net:8080/buildStatus/icon?job=cordova-periodic-build/PLATFORM=android,PLUGIN=cordova-plugin-device-motion)](http://cordova-ci.cloudapp.net:8080/job/cordova-periodic-build/PLATFORM=android,PLUGIN=cordova-plugin-device-motion/)|[![Build Status](http://cordova-ci.cloudapp.net:8080/buildStatus/icon?job=cordova-periodic-build/PLATFORM=ios,PLUGIN=cordova-plugin-device-motion)](http://cordova-ci.cloudapp.net:8080/job/cordova-periodic-build/PLATFORM=ios,PLUGIN=cordova-plugin-device-motion/)|[![Build Status](http://cordova-ci.cloudapp.net:8080/buildStatus/icon?job=cordova-periodic-build/PLATFORM=windows-8.1-store,PLUGIN=cordova-plugin-device-motion)](http://cordova-ci.cloudapp.net:8080/job/cordova-periodic-build/PLATFORM=windows-8.1-store,PLUGIN=cordova-plugin-device-motion/)|[![Build Status](http://cordova-ci.cloudapp.net:8080/buildStatus/icon?job=cordova-periodic-build/PLATFORM=windows-8.1-phone,PLUGIN=cordova-plugin-device-motion)](http://cordova-ci.cloudapp.net:8080/job/cordova-periodic-build/PLATFORM=windows-8.1-phone,PLUGIN=cordova-plugin-device-motion/)|[![Build Status](http://cordova-ci.cloudapp.net:8080/buildStatus/icon?job=cordova-periodic-build/PLATFORM=windows-10-store,PLUGIN=cordova-plugin-device-motion)](http://cordova-ci.cloudapp.net:8080/job/cordova-periodic-build/PLATFORM=windows-10-store,PLUGIN=cordova-plugin-device-motion/)|[![Build Status](https://travis-ci.org/apache/cordova-plugin-device-motion.svg?branch=master)](https://travis-ci.org/apache/cordova-plugin-device-motion)|
-
 # cordova-plugin-device-motion
 
 This plugin provides access to the device's accelerometer. The accelerometer is
 a motion sensor that detects the change (_delta_) in movement relative to the
-current device orientation, in three dimensions along the _x_, _y_, and _z_
-axis.
+current device orientation, in three dimensions along the _x_, _y_, _z_
+axis, _pitch_, _roll_, and _azimuth_.
 
 Access is via a global `navigator.accelerometer` object.
 
@@ -45,19 +41,11 @@ Report issues with this plugin on the [Apache Cordova issue tracker](https://iss
 
 ## Installation
 
-    cordova plugin add cordova-plugin-device-motion
+    cordova plugin add https://github.com/hitdev01/cordova-plugin-device-motion
 
 ## Supported Platforms
 
-- Amazon Fire OS
 - Android
-- BlackBerry 10
-- Browser
-- Firefox OS
-- iOS
-- Tizen
-- Windows Phone 8
-- Windows
 
 ## Methods
 
@@ -71,7 +59,7 @@ Report issues with this plugin on the [Apache Cordova issue tracker](https://iss
 
 ## navigator.accelerometer.getCurrentAcceleration
 
-Get the current acceleration along the _x_, _y_, and _z_ axes.
+Get the current acceleration along the _x_, _y_, _z_ axes, _pitch_, _roll_, and _azimuth_.
 
 These acceleration values are returned to the `accelerometerSuccess`
 callback function.
@@ -81,11 +69,14 @@ callback function.
 
 ### Example
 
-    function onSuccess(acceleration) {
-        alert('Acceleration X: ' + acceleration.x + '\n' +
-              'Acceleration Y: ' + acceleration.y + '\n' +
-              'Acceleration Z: ' + acceleration.z + '\n' +
-              'Timestamp: '      + acceleration.timestamp + '\n');
+    function onSuccess(data) {
+        alert('Acceleration X: ' + data.x + '\n' +
+              'Acceleration Y: ' + data.y + '\n' +
+              'Acceleration Z: ' + data.z + '\n' +
+              'Orientation Pitch: ' + data.pitch + '\n' +
+              'Orientation Roll: ' + data.roll + '\n' +
+              'Orientation Azimuth: ' + data.azimuth + '\n' +
+              'Timestamp: '      + data.timestamp + '\n');
     }
 
     function onError() {
@@ -131,11 +122,14 @@ accelerometer.
 
 ###  Example
 
-    function onSuccess(acceleration) {
-        alert('Acceleration X: ' + acceleration.x + '\n' +
-              'Acceleration Y: ' + acceleration.y + '\n' +
-              'Acceleration Z: ' + acceleration.z + '\n' +
-              'Timestamp: '      + acceleration.timestamp + '\n');
+    function onSuccess(data) {
+        alert('Acceleration X: ' + data.x + '\n' +
+              'Acceleration Y: ' + data.y + '\n' +
+              'Acceleration Z: ' + data.z + '\n' +
+              'Orientation Pitch: ' + data.pitch + '\n' +
+              'Orientation Roll: ' + data.roll + '\n' +
+              'Orientation Azimuth: ' + data.azimuth + '\n' +
+              'Timestamp: '      + data.timestamp + '\n');
     }
 
     function onError() {
@@ -182,4 +176,7 @@ device lies flat and facing up, _x_, _y_, and _z_ values returned should be
 - __x__:  Amount of acceleration on the x-axis. (in m/s^2) _(Number)_
 - __y__:  Amount of acceleration on the y-axis. (in m/s^2) _(Number)_
 - __z__:  Amount of acceleration on the z-axis. (in m/s^2) _(Number)_
+- __pitch__:  Amount of slope on pitch direction. _(Number)_
+- __roll__:  Amount of slope on roll direction. _(Number)_
+- __azimuth__:  Amount of azimuth. _(Number)_
 - __timestamp__: Creation timestamp in milliseconds. _(DOMTimeStamp)_

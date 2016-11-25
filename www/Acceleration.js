@@ -19,10 +19,13 @@
  *
 */
 
-var Acceleration = function(x, y, z, timestamp) {
+var Acceleration = function(x, y, z, pitch, roll, azimuth, timestamp) {
     this.x = x;
     this.y = y;
     this.z = z;
+    this.pitch = pitch;
+    this.roll = roll;
+    this.azimuth = azimuth;
     this.timestamp = timestamp || (new Date()).getTime();
 };
 
